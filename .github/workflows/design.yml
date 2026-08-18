@@ -5,10 +5,13 @@
 #
 # REQUIRED REPO SETUP BEFORE FIRST RUN:
 #   Settings -> Secrets and variables -> Actions -> New repository secret
-#     AWS_ACCESS_KEY_ID       - IAM user/role access key
-#     AWS_SECRET_ACCESS_KEY   - IAM user/role secret key
-#     PARAM_VALUE (optional)  - default SSM parameter value, used only if
-#                               you leave the "param_value" input blank
+#     AWS_ACCESS_KEY_ID     - IAM user/role access key
+#     AWS_SECRET_ACCESS_KEY - IAM user/role secret key
+#     PARAM_VALUE           - SSM parameter value
+#
+#   Settings -> Secrets and variables -> Actions -> Variables
+#     PROJECT_NAME          - project name
+#     FOLDER_NAME           - folder name to create inside the project
 #
 #   NOTE ON SCRIPT INJECTION: inputs/secrets are always passed into steps
 #   via an `env:` block and read as $VAR_NAME inside the shell script -
@@ -17,23 +20,10 @@
 #   or $()) break out of the string and execute arbitrary commands on
 #   the runner. Passing through env: avoids that entirely.
 
-name: Run setup_project.sh
+name: Run Design Automate
 
 on:
   workflow_dispatch:
-    inputs:
-      project_name:
-        description: "Project name"
-        required: true
-        type: string
-      folder_name:
-        description: "Folder name to create inside the project"
-        required: true
-        type: string
-      param_value:
-        description: "SSM parameter value (leave blank to use the PARAM_VALUE repo secret, or if the parameter already exists)"
-        required: false
-        type: string
 
 jobs:
   run-setup:
@@ -52,25 +42,40 @@ jobs:
 
       - name: Resolve and mask parameter value
         env:
-          PARAM_VALUE_INPUT: ${{ inputs.param_value }}
           PARAM_VALUE_SECRET: ${{ secrets.PARAM_VALUE }}
         run: |
-          VALUE="$PARAM_VALUE_INPUT"
-          if [[ -z "$VALUE" ]]; then
-            VALUE="$PARAM_VALUE_SECRET"
-          fi
+          VALUE="$PARAM_VALUE_SECRET"
           if [[ -n "$VALUE" ]]; then
             echo "::add-mask::$VALUE"
             echo "RESOLVED_PARAM_VALUE=$VALUE" >> "$GITHUB_ENV"
           fi
 
+      - name: Resolve project and folder
+        env:
+          PROJECT_NAME_VAR: ${{ vars.PROJECT_NAME }}
+          FOLDER_NAME_VAR: ${{ vars.FOLDER_NAME }}
+        run: |
+          PROJECT="$PROJECT_NAME_VAR"
+          FOLDER="$FOLDER_NAME_VAR"
+          if [[ -z "$PROJECT" ]]; then
+            echo "::error::PROJECT_NAME repo variable is not set."
+            exit 1
+          fi
+          if [[ -z "$FOLDER" ]]; then
+            echo "::error::FOLDER_NAME repo variable is not set."
+            exit 1
+          fi
+          echo "PROJECT_NAME=$PROJECT" >> "$GITHUB_ENV"
+          echo "FOLDER_NAME=$FOLDER" >> "$GITHUB_ENV"
+          echo "Resolved path: ${PROJECT}/${FOLDER}"
+
       - name: Run setup script
         env:
           PARAM_VALUE: ${{ env.RESOLVED_PARAM_VALUE }}
-          PROJECT_NAME_INPUT: ${{ inputs.project_name }}
-          FOLDER_NAME_INPUT: ${{ inputs.folder_name }}
+          PROJECT_NAME: ${{ env.PROJECT_NAME }}
+          FOLDER_NAME: ${{ env.FOLDER_NAME }}
         run: |
           chmod +x ./.github/workflows/setup_project.sh
           ./.github/workflows/setup_project.sh \
-            --project "$PROJECT_NAME_INPUT" \
-            --folder "$FOLDER_NAME_INPUT"
+            --project "$PROJECT_NAME" \
+            --folder "$FOLDER_NAME"
