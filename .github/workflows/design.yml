@@ -82,7 +82,7 @@ jobs:
           PROJECT_NAME_INPUT: ${{ inputs.project_name }}
           FOLDER_NAME_INPUT: ${{ inputs.folder_name }}
         run: |
-          chmod +x ./setup_project.sh
-          ./setup_project.sh \
+          chmod +x ./.github/workflows/setup_project.sh
+          ./.github/workflows/setup_project.sh \
             --project "$PROJECT_NAME_INPUT" \
             --folder "$FOLDER_NAME_INPUT"
