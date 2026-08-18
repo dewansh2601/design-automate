@@ -2,42 +2,42 @@
 ###############################################################################
 ###############################################################################
 ##                                                                           ##
-##      ___        ______    ____  _____ ____ ___ ____ _   _               ##
-##     / \ \      / / ___|  |  _ \| ____/ ___|_ _/ ___| \ | |               ##
-##    / _ \ \ /\ / /\___ \  | | | |  _| \___ \| | |  _|  \| |               ##
-##   / ___ \ V  V /  ___) | | |_| | |___ ___) | | |_| | |\  |               ##
-##  /_/   \_\_/\_/  |____/  |____/|_____|____/___\____|_| \_|               ##
+##      ___        ______    ____  _____ ____ ___ ____ _   _                 ##
+##     / \ \      / / ___|  |  _ \| ____/ ___|_ _/ ___| \ | |                ##
+##    / _ \ \ /\ / /\___ \  | | | |  _| \___ \| | |  _|  \| |                ##
+##   / ___ \ V  V /  ___) | | |_| | |___ ___) | | |_| | |\  |                ##
+##  /_/   \_\_/\_/  |____/  |____/|_____|____/___\____|_| \_|                ##
 ##                                                                           ##
-##             ____  _____ _____ _   _ ____                                 ##
-##            / ___|| ____|_   _| | | |  _ \                                ##
-##            \___ \|  _|   | | | | | | |_) |                               ##
-##             ___) | |___  | | | |_| |  __/                                ##
-##            |____/|_____| |_|  \___/|_|                                   ##
+##             ____  _____ _____ _   _ ____                                  ##
+##            / ___|| ____|_   _| | | |  _ \                                 ##
+##            \___ \|  _|   | | | | | | |_) |                                ##
+##             ___) | |___  | | | |_| |  __/                                 ##
+##            |____/|_____| |_|  \___/|_|                                    ##
 ##                                                                           ##
 ###############################################################################
 ###############################################################################
 #                                                                             #
-#   SCRIPT   : setup_project.sh                                             #
-#   AUTHOR   : Generated with Claude                                        #
+#   SCRIPT   : setup_project.sh                                               #
+#   AUTHOR   : Generated with Claude                                          #
 #                                                                             #
-#   PURPOSE:                                                                 #
-#     Automates project setup across two AWS services:                     #
+#   PURPOSE:                                                                  #
+#     Automates project setup across two AWS services:                        #
 #                                                                             #
-#       1) S3            -> Creates project folder structure                #
-#                            design-bucket-mb/<project_name>/<folder_name>/  #
+#       1) S3            -> Creates project folder structure                  #
+#                            design-bucket-mb/<project_name>/<folder_name>/   #
 #                                                                             #
-#       2) SSM Parameter  -> Creates a SecureString parameter                #
-#          Store             Name  : /mb-design/<project_name>              #
-#                             Type  : SecureString                          #
-#                             KeyId : alias/aws/ssm (account default KMS)    #
-#                             Value : entered by the user                   #
+#       2) SSM Parameter  -> Creates a SecureString parameter                 #
+#          Store             Name  : /mb-design/<project_name>                #
+#                             Type  : SecureString                            #
+#                             KeyId : alias/aws/ssm (account default KMS)     #
+#                             Value : entered by the user                     #
 #                                                                             #
-#   AWS CREDENTIALS:                                                         #
-#     This script is intended to run in CI/CD only. It expects AWS         #
-#     credentials to already be present in the environment (e.g. set by    #
-#     the "configure-aws-credentials" step in GitHub Actions) - no AWS     #
-#     CLI profile is used.                                                  #
-#     Region: us-east-1                                                     #
+#   AWS CREDENTIALS:                                                          #
+#     This script is intended to run in CI/CD only. It expects AWS            #
+#     credentials to already be present in the environment (e.g. set by       #
+#     the "configure-aws-credentials" step in GitHub Actions) - no AWS        #
+#     CLI profile is used.                                                    #
+#     Region: us-east-1                                                       #
 #                                                                             #
 ###############################################################################
 
