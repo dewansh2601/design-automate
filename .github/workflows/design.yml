@@ -1,0 +1,86 @@
+# .github/workflows/run-setup.yml
+#
+# Manually triggered ("Run workflow" button in the Actions tab) run of
+# setup_project.sh against real AWS resources.
+#
+# REQUIRED REPO SETUP BEFORE FIRST RUN:
+#   Settings -> Secrets and variables -> Actions -> New repository secret
+#     AWS_ACCESS_KEY_ID       - IAM user/role access key
+#     AWS_SECRET_ACCESS_KEY   - IAM user/role secret key
+#     PARAM_VALUE (optional)  - default SSM parameter value, used only if
+#                               you leave the "param_value" input blank
+#
+#   NOTE ON SECURITY: values typed into the manual "param_value" input
+#   are visible in the workflow run's input history to anyone with read
+#   access to this repo (GitHub does not encrypt workflow_dispatch
+#   inputs). For anything truly sensitive, leave the input blank and
+#   store the value in the PARAM_VALUE repository secret instead - the
+#   job below masks it in the logs either way, but the secret is the
+#   safer place to keep it long-term.
+#
+#   For production use, prefer OpenID Connect (OIDC) role assumption
+#   over long-lived access keys - see:
+#   https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+
+name: Run setup_project.sh
+
+"on":
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: "Project name"
+        required: true
+        type: string
+      folder_name:
+        description: "Folder name to create inside the project"
+        required: true
+        type: string
+      param_value:
+        description: "SSM parameter value (leave blank to use the PARAM_VALUE repo secret, or if the parameter already exists)"
+        required: false
+        type: string
+
+jobs:
+  run-setup:
+    name: Create S3 folders + SSM parameter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Resolve the parameter value: prefer the workflow input; fall back to
+      # the repository secret. Mask whichever value is used so it never
+      # appears in plain text in the log.
+      - name: Mask and resolve parameter value
+        run: |
+          VALUE="$PARAM_VALUE_INPUT"
+          if [[ -z "$VALUE" ]]; then
+            VALUE="$PARAM_VALUE_SECRET"
+          fi
+          if [[ -n "$VALUE" ]]; then
+            echo "::add-mask::$VALUE"
+            echo "RESOLVED_PARAM_VALUE=$VALUE" >> "$GITHUB_ENV"
+          fi
+        env:
+          # Pass via env to prevent expression injection into the shell script.
+          PARAM_VALUE_INPUT: ${{ inputs.param_value }}
+          PARAM_VALUE_SECRET: ${{ secrets.PARAM_VALUE }}
+
+      - name: Run setup script
+        env:
+          PARAM_VALUE: ${{ env.RESOLVED_PARAM_VALUE || '' }}
+          # Pass user inputs via env vars to avoid expression injection.
+          PROJECT_NAME: ${{ inputs.project_name }}
+          FOLDER_NAME: ${{ inputs.folder_name }}
+        run: |
+          chmod +x ./.github/workflows/setup_project.sh
+          ./.github/workflows/setup_project.sh \
+            --project "$PROJECT_NAME" \
+            --folder "$FOLDER_NAME"
