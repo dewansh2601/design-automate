@@ -21,10 +21,17 @@
 #   For production use, prefer OpenID Connect (OIDC) role assumption
 #   over long-lived access keys - see:
 #   https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+#
+#   NOTE ON SCRIPT INJECTION: inputs/secrets are always passed into steps
+#   via an `env:` block and read as $VAR_NAME inside the shell script -
+#   never interpolated directly as ${{ ... }} inside a run: script body.
+#   Direct interpolation lets a crafted input (e.g. containing backticks
+#   or $()) break out of the string and execute arbitrary commands on
+#   the runner. Passing through env: avoids that entirely.
 
 name: Run setup_project.sh
 
-"on":
+on:
   workflow_dispatch:
     inputs:
       project_name:
@@ -51,14 +58,14 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # Resolve the parameter value: prefer the workflow input; fall back to
-      # the repository secret. Mask whichever value is used so it never
-      # appears in plain text in the log.
-      - name: Mask and resolve parameter value
+      - name: Resolve and mask parameter value
+        env:
+          PARAM_VALUE_INPUT: ${{ inputs.param_value }}
+          PARAM_VALUE_SECRET: ${{ secrets.PARAM_VALUE }}
         run: |
           VALUE="$PARAM_VALUE_INPUT"
           if [[ -z "$VALUE" ]]; then
@@ -68,19 +75,14 @@ jobs:
             echo "::add-mask::$VALUE"
             echo "RESOLVED_PARAM_VALUE=$VALUE" >> "$GITHUB_ENV"
           fi
-        env:
-          # Pass via env to prevent expression injection into the shell script.
-          PARAM_VALUE_INPUT: ${{ inputs.param_value }}
-          PARAM_VALUE_SECRET: ${{ secrets.PARAM_VALUE }}
 
       - name: Run setup script
         env:
-          PARAM_VALUE: ${{ env.RESOLVED_PARAM_VALUE || '' }}
-          # Pass user inputs via env vars to avoid expression injection.
-          PROJECT_NAME: ${{ inputs.project_name }}
-          FOLDER_NAME: ${{ inputs.folder_name }}
+          PARAM_VALUE: ${{ env.RESOLVED_PARAM_VALUE }}
+          PROJECT_NAME_INPUT: ${{ inputs.project_name }}
+          FOLDER_NAME_INPUT: ${{ inputs.folder_name }}
         run: |
-          chmod +x ./.github/workflows/setup_project.sh
-          ./.github/workflows/setup_project.sh \
-            --project "$PROJECT_NAME" \
-            --folder "$FOLDER_NAME"
+          chmod +x ./setup_project.sh
+          ./setup_project.sh \
+            --project "$PROJECT_NAME_INPUT" \
+            --folder "$FOLDER_NAME_INPUT"
